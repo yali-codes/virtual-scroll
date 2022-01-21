@@ -1,0 +1,20 @@
+{
+	"name": "arithmetic",
+	"version": "1.0.0",
+	"description": "",
+	"main": "main.js",
+	"scripts": {
+		"dev": "vite"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"vue": "^3.2.27"
+	},
+	"devDependencies": {
+		"@types/vue": "^2.0.0",
+		"@vitejs/plugin-vue": "^2.0.1",
+		"prettier": "^2.5.1",
+		"vite": "^2.7.3"
+	}
+}

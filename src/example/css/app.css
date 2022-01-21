@@ -1,0 +1,23 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+
+html,
+body {
+	height: 100%;
+	overflow: hidden;
+}
+
+body {
+	padding: 100px 10px;
+	box-sizing: border-box;
+	font: 14px Microsoft YaHei;
+}
+
+.app {
+	height: 100%;
+	padding: 8px;
+	border-radius: 3px;
+	border: 1px solid #ddd;
+}

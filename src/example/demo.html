@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="./css/app.css">
+	<link rel="stylesheet" href="./css/virtual-scroll.css">
+	<title>demo</title>
+</head>
+
+<body>
+	<div class="app"></div>
+	<script src="./faker.min.js"></script>
+	<script src="./vitrual-scroll.js"></script>
+	<script>
+	const dataSource = [];
+	for (let i = 0; i < 3000; i++) {
+		dataSource.push({ index: i, value: faker.lorem.sentences() });
+	}
+
+	const virtualVm = new VirtualScroll('.app', dataSource, (item, i, list) => {
+		const _div = document.createElement('div');
+		_div.classList.add('v-list-item')
+		_div.innerHTML = `
+			<p><b>这是第${item.index + 1}项数据</b></p>
+			<p>${item.value}</p>
+		`;
+
+		return _div;
+	}, { isDynamicHeight: true, isCustomScrollBar: true, bufferScale: 0.1, useFrameOptimize: true })
+	</script>
+</body>
+</html>
