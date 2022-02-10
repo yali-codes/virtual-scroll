@@ -16,12 +16,12 @@ export default function VirtualScroll(el, dataSource, genItemCallback, options =
 	this.dataSource = dataSource; // 列表数据
 	this.dataLen = dataSource.length;
 	this.genItemCallback = genItemCallback; // 生成列表DOM元素的回调函数
+	this.offset = 0;
 
 	// 默认参数配置
 	this.configs = {
 		itemHeight: 50,
 		isDynamicHeight: false,
-		itemHeight: 50,
 		bufferScale: 0.5,
 		useFrameOptimize: false,
 		isCustomScrollBar: true,
@@ -49,8 +49,8 @@ export default function VirtualScroll(el, dataSource, genItemCallback, options =
 VirtualScroll.prototype.setItemsPosition = function () {
 	if (!this.configs.isDynamicHeight) return;
 	const { configs, dataLen } = this;
-	let index = 0;
 
+	let index = 0;
 	const _itemsPosition = [];
 	const _itemHeight = configs.itemHeight;
 	while (index < dataLen) {
@@ -63,7 +63,7 @@ VirtualScroll.prototype.setItemsPosition = function () {
 		index++;
 	}
 
-	this.itemsPosition = _itemsPosition;
+	this.itemsPosition = window.itemsPosition = _itemsPosition;
 };
 
 VirtualScroll.prototype.initBase = function () {
@@ -199,7 +199,19 @@ VirtualScroll.prototype.bindEvents = function () {
 	// scroll事件的回调函数
 	const _updateOffset = e => {
 		e.preventDefault();
-		this.render(e.target.scrollTop);
+		const _scrollTop = (this.offset = e.target.scrollTop);
+		// 更新自定义滚动条的位置
+		if (isCustomScrollBar) {
+			const _totalHeight = allItemContainer.clientHeight;
+			const _scrollbarHeight = scrollbarContainer.clientHeight;
+			const _visibleHeight = vListContainer.clientHeight;
+			const _thumbHeight = scrollbarThumbContainer.clientHeight;
+			const _thumbRealHeight = scrollbarThumbContainer.getAttribute('real-height'); // 滑块的真实高度
+			const _moveRealMaxHeight = _scrollbarHeight - (_thumbRealHeight < 20 ? _thumbRealHeight : 0) - _thumbHeight;
+			scrollbarThumbContainer.style.top = Math.ceil((_scrollTop * _moveRealMaxHeight) / (_totalHeight - _visibleHeight)) + 'px';
+		}
+
+		this.render(); // 渲染
 	};
 
 	// 绑定滚动事件，用节流函数包装 scroll 事件的回调函数
@@ -227,7 +239,7 @@ VirtualScroll.prototype.bindEvents = function () {
 			const _scrollbarHeight = scrollbarContainer.clientHeight;
 			const _visibleHeight = vListContainer.clientHeight;
 			const _thumbHeight = scrollbarThumbContainer.clientHeight;
-			const _thumbRealHeight = scrollbarThumbContainer.getAttribute('real-height'); // 滑块的高度有需要特殊处理
+			const _thumbRealHeight = scrollbarThumbContainer.getAttribute('real-height'); // 滑块的真实高度
 			const _moveRealMaxHeight = _scrollbarHeight - (_thumbRealHeight < 20 ? _thumbRealHeight : 0) - _thumbHeight;
 
 			let _moveDis = evt.pageY - _moveY;
@@ -257,8 +269,16 @@ VirtualScroll.prototype.bindEvents = function () {
 	}
 };
 
-VirtualScroll.prototype.render = function (offset = 0) {
-	const { dataLen, configs, clientAmounts, dataSource, itemHeight, visibleItemContainer, genItemCallback } = this;
+VirtualScroll.prototype.rerender = function (data) {
+	this.dataSource = data;
+	this.dataLen = data.length;
+	this.setItemsPosition();
+	this.initBase();
+	this.render();
+};
+
+VirtualScroll.prototype.render = function () {
+	const { dataLen, configs, clientAmounts, dataSource, itemHeight, visibleItemContainer, genItemCallback, offset } = this;
 	const { bufferScale, isDynamicHeight, isCustomScrollBar } = configs;
 
 	// 开始渲染虚拟列表
@@ -274,8 +294,8 @@ VirtualScroll.prototype.render = function (offset = 0) {
 	// 截取可渲染的数据列表
 	this.renderList = dataSource.slice(_sIndex, _eIndex);
 
-	const _itemRenderCallback = (item, i, arr) => {
-		const _item = genItemCallback(item, i, arr);
+	const _itemRenderCallback = item => {
+		const _item = genItemCallback(item);
 		if (!isDynamicHeight) {
 			_item.style.height = itemHeight;
 		}
@@ -301,7 +321,7 @@ VirtualScroll.prototype.render = function (offset = 0) {
 };
 
 VirtualScroll.prototype.updateItemsPotion = function (children, sIndex) {
-	// 遍历children，获取每一个child的rect -> child.getBoundingClientRect()
+	// 遍历 children，获取每一个 child 的 rect -> child.getBoundingClientRect()
 	if (!children.length) return;
 	let _sIndex = sIndex;
 	[...children].forEach(chidNode => {
@@ -358,7 +378,7 @@ VirtualScroll.prototype.updateVScrollbarThumElembHeight = function () {
 
 VirtualScroll.prototype.findFirstIndex = function (offset) {
 	const { isDynamicHeight, itemHeight } = this.configs;
-	// 二分法查找 top
+	// 二分法查找 bottom
 	return isDynamicHeight ? binarySearch(this.itemsPosition, offset, 'bottom') : Math.floor(offset / itemHeight);
 };
 

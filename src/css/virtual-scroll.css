@@ -27,6 +27,8 @@
 }
 
 .v-list-item {
+	display: flex;
+	align-items: center;
 	padding: 5px;
 	box-sizing: border-box;
 	border-bottom: 1px solid #ddd;
@@ -34,4 +36,25 @@
 }
 .v-list-item:last-child {
 	border: none;
+}
+
+.v-list-item .v-list-item-l {
+	flex: 1;
+}
+
+.v-list-item .v-list-item-r {
+	display: block;
+	width: 80px;
+	height: 30px;
+	line-height: 30px;
+	border: none;
+	margin: 0 10px;
+	background-color: #000;
+	color: #fff;
+	cursor: pointer;
+	border-radius: 3px;
+}
+
+.v-list-item .v-list-item-r:hover {
+	opacity: 0.8;
 }
