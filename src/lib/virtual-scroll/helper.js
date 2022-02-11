@@ -1,4 +1,4 @@
-export function throttle(callback, delay = 10) {
+export function throttle(callback, delay = 20) {
 	let id = null;
 	return function () {
 		if (id) clearTimeout(id);
