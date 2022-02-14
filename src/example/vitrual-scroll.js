@@ -1,4 +1,3 @@
-console.log('============');
 /**
  * 虚拟滚动列表构造函数
  * @param {*} el 列表挂载的节点
@@ -175,7 +174,7 @@ VirtualScroll.prototype.createScrollbarContainer = function (parent) {
 
 	// 创建滚动条容器滑块
 	const _scrollbarThumbContainer = document.createElement('div');
-	_scrollbarThumbContainer.classList.add('v-scrollbar-tail-thumb');
+	_scrollbarThumbContainer.classList.add('v-scrollbar-thumb');
 	_scrollbarThumbContainer.style.cssText = `
 		position: absolute; top: 0; left: 0; z-index: 10;
 		width: 100%; height: 20px; background: rgba(100, 100, 100, 0.4);

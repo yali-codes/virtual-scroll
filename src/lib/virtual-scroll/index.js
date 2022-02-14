@@ -17,6 +17,8 @@ export default function VirtualScroll(el, dataSource, genItemCallback, options =
 	this.dataLen = dataSource.length;
 	this.genItemCallback = genItemCallback; // 生成列表DOM元素的回调函数
 	this.offset = 0;
+	this.clientHeight = 0;
+	this.clientAmounts = 0;
 
 	// 默认参数配置
 	this.configs = {
@@ -38,15 +40,34 @@ export default function VirtualScroll(el, dataSource, genItemCallback, options =
 	// 创建虚拟滚动容器
 	this.createContainer();
 
-	// 调用初始化方法
-	this.initBase();
+	// 创建虚拟列表
+	this.createVListContainer();
 
-	// 绑定事件
-	this.bindEvents();
-
-	// 开始渲染
+	// 首次渲染虚拟列表
 	this.render();
+
+	// 注册滚动事件
+	this.bindScrollbarEvent();
+
+	// 注册窗口改变事件
+	this.bindResizeEvent();
+
+	// 如果需要自定义滚动条，需要创建滚动条, 这里要抽离成一个类
+	this.createScrollbarContainer(this.configs);
 }
+
+VirtualScroll.prototype.setTotalHeight = function (totalHeight) {
+	// 将总高度更新到 allItemContainer 节点上
+	this.allItemContainer.style.height = `${totalHeight}px`;
+
+	// 更新可显示的总记录数
+	this.setClientAmounts();
+};
+
+VirtualScroll.prototype.setClientAmounts = function () {
+	// 设置容器的可见虚拟节点数
+	this.clientAmounts = Math.ceil(this.vListContainer.clientHeight / this.configs.itemHeight);
+};
 
 VirtualScroll.prototype.setItemsPosition = function (sIndex = 0, currItem) {
 	if (!this.configs.isDynamicHeight) return;
@@ -54,17 +75,17 @@ VirtualScroll.prototype.setItemsPosition = function (sIndex = 0, currItem) {
 	const itemHeight = this.configs.itemHeight;
 
 	let index = 0;
-	let dataLen = this.dataLen;
 	let top = 0;
 	let bottom = 0;
-	let cachedItemPosition = [];
+	let cachedPosition = [];
+	let dataLen = this.dataLen;
 
 	if (sIndex && currItem) {
 		const { top: currTop, bottom: currBottom } = currItem;
 		top = currTop;
 		bottom = currBottom;
 		dataLen = this.dataLen - sIndex;
-		cachedItemPosition = this.itemsPosition.slice(0, sIndex);
+		cachedPosition = this.itemsPosition.slice(0, sIndex);
 	}
 
 	while (index < dataLen) {
@@ -77,106 +98,85 @@ VirtualScroll.prototype.setItemsPosition = function (sIndex = 0, currItem) {
 		index++;
 	}
 
-	this.itemsPosition = [...cachedItemPosition, ...itemsPosition];
-};
-
-VirtualScroll.prototype.setTotalHeight = function (totalHeight) {
-	// 将总高度更新到 allItemContainer 节点上
-	this.allItemContainer.style.height = `${totalHeight}px`;
-};
-
-VirtualScroll.prototype.initBase = function () {
-	const dataLen = this.dataLen;
-	const itemHeight = this.configs.itemHeight;
-
-	// 设置容器的可见虚拟节点数
-	this.clientAmounts = Math.ceil(this.vListContainer.clientHeight / itemHeight);
-
-	// 将总高度更新到 allItemContainer 节点上
-	this.setTotalHeight(this.configs.isDynamicHeight ? this.itemsPosition[dataLen - 1].bottom : itemHeight * dataLen);
+	this.itemsPosition = [...cachedPosition, ...itemsPosition];
 };
 
 VirtualScroll.prototype.createContainer = function () {
-	const container = document.createElement('div');
-	container.classList.add('v-container');
-	container.style.cssText = `
-		position: relative;
-		height: 100%; overflow: hidden;
-	`;
-
-	this.creatVListContainer(container);
-
-	// 如果需要自定义滚动条，需要初始化
-	if (this.configs.isCustomScrollBar) {
-		this.createScrollbarContainer(container);
-	}
+	const vContainer = document.createElement('div');
+	vContainer.classList.add('v-container');
+	vContainer.style.cssText = `position: relative; height: 100%; overflow: hidden;`;
 
 	if (this.el) {
-		this.el.appendChild(container);
+		this.vContainer = vContainer; // 缓存虚拟列表节点
+		this.el.appendChild(vContainer);
 	}
 };
 
-VirtualScroll.prototype.creatVListContainer = function (parent) {
+VirtualScroll.prototype.createVListContainer = function () {
 	const vListContainer = document.createElement('div');
 	vListContainer.classList.add('v-list');
-	vListContainer.style.cssText = `
-		position: relative;
-		height: 100%; overflow-y: auto;
-	`;
+	vListContainer.style.cssText = `position: relative; height: 100%; overflow-y: auto;`;
 
 	// 缓存创建的好DOM
 	this.vListContainer = vListContainer;
 
 	// 创建所有的item的容器
-	this.createAllItemContainer(vListContainer);
+	this.createAllItemContainer();
 
 	// 创建可见容器
-	this.createVisibleItemContainer(vListContainer);
+	this.createVisibleItemContainer();
 
-	if (parent) {
-		parent.appendChild(vListContainer);
+	if (this.vContainer) {
+		this.vContainer.appendChild(vListContainer);
 	}
+
+	// 将总高度更新到 allItemContainer 节点上
+	const dataLen = this.dataLen;
+	this.setTotalHeight(this.configs.isDynamicHeight ? this.itemsPosition[dataLen - 1].bottom : itemHeight * dataLen);
+
+	// 注册滚动事件
+	this.bindScrollbarEvent();
 };
 
-VirtualScroll.prototype.createAllItemContainer = function (parent) {
+VirtualScroll.prototype.createAllItemContainer = function () {
 	const allItemContainer = document.createElement('div');
 	allItemContainer.classList.add('v-all-items');
-	allItemContainer.style.cssText = `
-		position: absolute; left: 0;
-		right: 0; top: 0; z-index: -1; height: 1px;
-	`;
+	allItemContainer.style.cssText = `position: absolute; left: 0; right: 0; top: 0; z-index: -1; height: 1px;`;
 
-	// 缓存创建的好DOM
+	// 缓存创建的好的节点
 	this.allItemContainer = allItemContainer;
 
 	// 挂载到父级
-	if (parent) {
-		parent.appendChild(allItemContainer);
+	if (this.vListContainer) {
+		this.vListContainer.appendChild(allItemContainer);
 	}
 };
 
-VirtualScroll.prototype.createVisibleItemContainer = function (parent) {
+VirtualScroll.prototype.createVisibleItemContainer = function () {
 	// 创建可见的元素容器
-	const _visibleItemContainer = document.createElement('div');
-	_visibleItemContainer.classList.add('v-visible-items');
-	_visibleItemContainer.style.cssText = `
-		position: absolute;
-		left: 0; right: 0; top: 0; z-index: 1;
-		transform: translate3d(0px, 0px, 0px)
+	const visibleItemContainer = document.createElement('div');
+	visibleItemContainer.classList.add('v-visible-items');
+	visibleItemContainer.style.cssText = `
+		position: absolute;	left: 0; right: 0; top: 0;
+		z-index: 1;	transform: translate3d(0px, 0px, 0px)
 	`;
 
-	// 缓存创建的好DOM
-	this.visibleItemContainer = _visibleItemContainer;
+	// 缓存创建的好的节点
+	this.visibleItemContainer = visibleItemContainer;
 
 	// 挂载到父级
-	if (parent) {
-		parent.appendChild(_visibleItemContainer);
+	if (this.vListContainer) {
+		this.vListContainer.appendChild(visibleItemContainer);
 	}
 };
 
 /**创建自定义滚动条 */
-VirtualScroll.prototype.createScrollbarContainer = function (parent) {
-	const configs = this.configs;
+VirtualScroll.prototype.createScrollbarContainer = function (configs) {
+	// 如果没有开启自定义滚动条配置项直接返回
+	if (!configs.isCustomScrollBar || this.scrollbarContainer) {
+		return;
+	}
+
 	const scrollbarContainer = document.createElement('div');
 	scrollbarContainer.classList.add('v-scrollbar');
 	scrollbarContainer.style.cssText = `
@@ -187,10 +187,10 @@ VirtualScroll.prototype.createScrollbarContainer = function (parent) {
 
 	// 创建滚动条容器滑块
 	const scrollbarThumbContainer = document.createElement('div');
-	scrollbarThumbContainer.classList.add('v-scrollbar-tail-thumb');
+	scrollbarThumbContainer.classList.add('v-scrollbar-thumb');
 	scrollbarThumbContainer.style.cssText = `
-		position: absolute; left: 0; z-index: 10;
-		width: 100%; background: rgba(100, 100, 100, 0.4);
+		position: absolute; left: 0; top: 0; z-index: 10;
+		width: 100%; background: rgba(100, 100, 100, 100); opacity: 0.4;
 		border-radius: ${configs.borderRadius}px; cursor: pointer; user-select: none; transition: all 500;
 	`;
 
@@ -199,19 +199,25 @@ VirtualScroll.prototype.createScrollbarContainer = function (parent) {
 	this.scrollbarContainer = scrollbarContainer;
 	this.scrollbarThumbContainer = scrollbarThumbContainer;
 
-	// 挂载到父级
-	if (parent) {
-		parent.appendChild(scrollbarContainer);
+	if (this.vContainer) {
+		// 挂载到父级
+		this.vContainer.appendChild(scrollbarContainer);
+
+		// 设定滚动条的高度
+		this.updateVScrollbarThumElemHeight();
+
+		// 绑定事件
+		this.bindCustomScrollbarEvents();
 	}
 };
 
-VirtualScroll.prototype.bindEvents = function () {
+VirtualScroll.prototype.bindScrollbarEvent = function () {
 	// scroll事件的回调函数
 	const updateOffsetHandler = e => {
 		e.preventDefault();
 		const scrollTop = (this.offset = e.target.scrollTop);
 		// 更新自定义滚动条的位置
-		if (this.configs.isCustomScrollBar) {
+		if (this.configs.isCustomScrollBar && this.scrollbarContainer) {
 			const totalHeight = this.allItemContainer.clientHeight;
 			const visibleHeight = this.vListContainer.clientHeight;
 			const moveMaximumHeight = this.scrollbarContainer.clientHeight - this.scrollbarThumbContainer.clientHeight;
@@ -224,50 +230,63 @@ VirtualScroll.prototype.bindEvents = function () {
 	// 绑定滚动事件，用节流函数包装 scroll 事件的回调函数
 	const scrollHandler = this.configs.useFrameOptimize ? throttleByFrame(updateOffsetHandler) : throttle(updateOffsetHandler);
 	this.vListContainer.addEventListener('scroll', scrollHandler);
+};
 
+VirtualScroll.prototype.bindResizeEvent = function () {
+	// 监听窗口改变事件回调
+	window.addEventListener('resize', () => {
+		this.setClientAmounts();
+		this.createScrollbarContainer(this.configs);
+		this.render();
+	});
+};
+
+VirtualScroll.prototype.bindCustomScrollbarEvents = function () {
 	// 如果有自定义滚动条，那么给自定义滚动条绑定拖拽事件
-	if (this.configs.isCustomScrollBar) {
-		let moveY = null;
-		this.vListContainer.classList.add('is-custom-scrollbar');
+	let moveY = null;
+	let vListContainer = null;
 
-		/**鼠标按下回调函数 */
-		const mousedownHanlder = evt => {
-			moveY = evt.pageY - (parseInt(this.scrollbarThumbContainer.style.top) || 0);
-			document.addEventListener('mouseup', mouseupHandler);
-			document.addEventListener('mousemove', mousemoveHandler);
-		};
+	/**鼠标按下回调函数 */
+	const mousedownHanlder = evt => {
+		moveY = evt.pageY - (parseInt(this.scrollbarThumbContainer.style.top) || 0);
+		document.addEventListener('mouseup', mouseupHandler);
+		document.addEventListener('mousemove', mousemoveHandler);
+	};
 
-		/**鼠标移动回调函数 */
-		const mousemoveHandler = evt => {
-			// 获取相关的节点的高度
-			const totalHeight = this.allItemContainer.clientHeight;
-			const scrollbarHeight = this.scrollbarContainer.clientHeight;
-			const visibleHeight = this.vListContainer.clientHeight;
-			const thumbBarHeight = this.scrollbarThumbContainer.clientHeight;
-			const moveMaximumHeight = scrollbarHeight - thumbBarHeight;
+	/**鼠标移动回调函数 */
+	const mousemoveHandler = evt => {
+		// 获取相关的节点的高度
+		const totalHeight = this.allItemContainer.clientHeight;
+		const scrollbarHeight = this.scrollbarContainer.clientHeight;
+		const thumbBarHeight = this.scrollbarThumbContainer.clientHeight;
+		const moveMaximumHeight = scrollbarHeight - thumbBarHeight;
+		const _moveDis = evt.pageY - moveY;
 
-			let _moveDis = evt.pageY - moveY;
+		// 滑块只能在 0 ~ moveMaximumHeight 之间滑动
+		if (_moveDis < 0 || _moveDis > moveMaximumHeight) {
+			return;
+		}
 
-			// 滑块只能在 0 ~ moveMaximumHeight 之间滑动
-			if (_moveDis < 0 || _moveDis > moveMaximumHeight) {
-				return;
-			}
+		// 设备自定义滚动条滑块的top值
+		if (this.configs.isCustomScrollBar) {
+			this.scrollbarThumbContainer.style.top = `${_moveDis}px`;
+		}
 
-			// 设备自定义滚动条滑块的top值
-			if (this.configs.isCustomScrollBar) {
-				this.scrollbarThumbContainer.style.top = `${_moveDis}px`;
-			}
+		// 触发容器的滚动事件
+		if (vListContainer) {
+			vListContainer.scrollTop = Math.ceil(((totalHeight - scrollbarHeight) * _moveDis) / moveMaximumHeight);
+		}
+	};
 
-			// 触发容器的滚动事件
-			this.vListContainer.scrollTop = Math.ceil(((totalHeight - visibleHeight) * _moveDis) / moveMaximumHeight);
-		};
+	/**鼠标弹起回调函数 */
+	const mouseupHandler = () => {
+		document.removeEventListener('mousedown', mousedownHanlder);
+		document.removeEventListener('mousemove', mousemoveHandler);
+	};
 
-		/**鼠标弹起回调函数 */
-		const mouseupHandler = () => {
-			document.removeEventListener('mousedown', mousedownHanlder);
-			document.removeEventListener('mousemove', mousemoveHandler);
-		};
-
+	if (this.scrollbarContainer) {
+		vListContainer = this.scrollbarContainer.previousSibling;
+		vListContainer.classList.add('is-custom-scrollbar');
 		this.scrollbarContainer.addEventListener('mousedown', mousedownHanlder);
 	}
 };
@@ -279,11 +298,11 @@ VirtualScroll.prototype.loadMoreData = function (data, idx) {
 	const currentItem = this.itemsPosition[idx - 1];
 	this.setItemsPosition(idx, currentItem);
 	this.setTotalHeight(this.itemsPosition[this.dataLen - 1].bottom);
-	this.updateVScrollbarThumElemHeight();
 
-	if (this.configs.isCustomScrollBar) {
+	const scrollbarThumbContainer = this.scrollbarThumbContainer;
+	if (this.configs.isCustomScrollBar && scrollbarThumbContainer) {
+		this.updateVScrollbarThumElemHeight();
 		const totalHeight = this.allItemContainer.clientHeight;
-		const scrollbarThumbContainer = this.scrollbarThumbContainer;
 		const visibleHeight = this.vListContainer.clientHeight;
 		const moveMaximumHeight = this.scrollbarContainer.clientHeight - scrollbarThumbContainer.clientHeight;
 		const newTop = Math.floor((this.vListContainer.scrollTop * moveMaximumHeight) / (totalHeight - visibleHeight));
@@ -373,11 +392,17 @@ VirtualScroll.prototype.updateVisibleItemContainerTranslate = function (sIndex) 
 };
 
 VirtualScroll.prototype.updateVScrollbarThumElemHeight = function () {
-	if (this.configs.isCustomScrollBar) {
+	if (this.configs.isCustomScrollBar && this.scrollbarContainer) {
 		const totalHeight = this.allItemContainer.clientHeight;
 		const visibleHeight = this.scrollbarContainer.clientHeight;
-		const thumbBarHeight = Math.ceil((visibleHeight * visibleHeight) / totalHeight);
-		this.scrollbarThumbContainer.style.height = `${thumbBarHeight > 150 ? thumbBarHeight : 150}px`;
+		const thumbHeight = totalHeight > visibleHeight ? Math.ceil((visibleHeight * visibleHeight) / totalHeight) : null;
+
+		if (!thumbHeight) {
+			this.scrollbarContainer.parentNode.removeChild(this.scrollbarContainer);
+			this.scrollbarContainer = null;
+			return;
+		}
+		this.scrollbarThumbContainer.style.height = `${thumbHeight > 150 ? thumbHeight : 150}px`;
 	}
 };
 

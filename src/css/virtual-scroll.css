@@ -58,3 +58,7 @@
 .v-list-item .v-list-item-r:hover {
 	opacity: 0.8;
 }
+
+.v-container .v-scrollbar-thumb:hover {
+	opacity: 0.7 !important;
+}
