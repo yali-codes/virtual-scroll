@@ -90,7 +90,7 @@ VirtualScroll.prototype.setItemsPosition = function (sIndex = 0, currItem) {
 
 	while (index < dataLen) {
 		itemsPosition.push({
-			index,
+			index: index + sIndex,
 			height: itemHeight,
 			top: index * itemHeight + top,
 			bottom: (index + 1) * itemHeight + bottom,
@@ -132,7 +132,7 @@ VirtualScroll.prototype.createVListContainer = function () {
 
 	// 将总高度更新到 allItemContainer 节点上
 	const dataLen = this.dataLen;
-	this.setTotalHeight(this.configs.isDynamicHeight ? this.itemsPosition[dataLen - 1].bottom : itemHeight * dataLen);
+	this.setTotalHeight(this.configs.isDynamicHeight ? this.itemsPosition[dataLen - 1].bottom : this.itemHeight * dataLen);
 
 	// 注册滚动事件
 	this.bindScrollbarEvent();
@@ -295,16 +295,26 @@ VirtualScroll.prototype.loadMoreData = function (data, idx) {
 	this.dataSource = data;
 	this.dataLen = data.length;
 
-	const currentItem = this.itemsPosition[idx - 1];
-	this.setItemsPosition(idx, currentItem);
-	this.setTotalHeight(this.itemsPosition[this.dataLen - 1].bottom);
+	// 更新总高
+	if (this.configs.isDynamicHeight) {
+		const currentItem = this.itemsPosition[idx - 1];
+		this.setItemsPosition(idx, currentItem);
+		this.setTotalHeight(this.itemsPosition[this.dataLen - 1].bottom);
+	} else {
+		this.setTotalHeight(this.dataLen * this.configs.itemHeight);
+	}
 
-	const scrollbarThumbContainer = this.scrollbarThumbContainer;
-	if (this.configs.isCustomScrollBar && scrollbarThumbContainer) {
+	// 渲染
+	this.render();
+
+	// 重新计算自定义滚动条滑块的位置
+	const scrollbarContainer = this.scrollbarContainer;
+	if (this.configs.isCustomScrollBar && scrollbarContainer) {
 		this.updateVScrollbarThumElemHeight();
+		const scrollbarThumbContainer = this.scrollbarThumbContainer;
 		const totalHeight = this.allItemContainer.clientHeight;
 		const visibleHeight = this.vListContainer.clientHeight;
-		const moveMaximumHeight = this.scrollbarContainer.clientHeight - scrollbarThumbContainer.clientHeight;
+		const moveMaximumHeight = scrollbarContainer.clientHeight - scrollbarThumbContainer.clientHeight;
 		const newTop = Math.floor((this.vListContainer.scrollTop * moveMaximumHeight) / (totalHeight - visibleHeight));
 		scrollbarThumbContainer.style.top = `${newTop}px`;
 	}
