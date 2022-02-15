@@ -1,5 +1,5 @@
 <template>
-	<h1>Hello, VirtualScroll!!</h1>
+	<h1>Hello, Virtual Scroller !</h1>
 </template>
 
 <script>

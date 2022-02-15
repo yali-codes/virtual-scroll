@@ -6,7 +6,7 @@ import { createApp } from 'vue';
 createApp(App).mount('.app-vue');
 
 const dataSource = [];
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 30; i++) {
 	dataSource.push({ index: i, value: faker.lorem.sentences() });
 }
 
@@ -14,7 +14,7 @@ window.loadMoreData = function (idx) {
 	// 插入的数据
 	const _moreData = [];
 	let _newIdx = idx;
-	for (let i = 0; i < 100; i++) {
+	for (let i = 0; i < 30; i++) {
 		_newIdx++;
 		_moreData.push({ index: _newIdx, value: faker.lorem.sentences() });
 	}
@@ -53,5 +53,5 @@ const virtualVm = new VirtualScroll(
 
 		return div;
 	},
-	{ isDynamicHeight: true, isCustomScrollBar: true, bufferScale: 0.1, useFrameOptimize: true },
+	{ useFrameOptimize: true, isDynamicHeight: true, isCustomScrollBar: true },
 );

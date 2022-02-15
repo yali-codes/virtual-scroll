@@ -1,8 +1,8 @@
-export function throttle(callback, delay = 20) {
+export function throttle(callback, delay = 0) {
 	let id = null;
 	return function () {
 		if (id) clearTimeout(id);
-		id = setTimeout(() => callback.apply(this, arguments), delay);
+		id = setTimeout(() => callback.apply(this, [...arguments]), delay);
 	};
 }
 
@@ -10,7 +10,7 @@ export function throttleByFrame(callback) {
 	let id = null;
 	return function () {
 		if (id) window.cancelAnimationFrame(id);
-		id = window.requestAnimationFrame(() => callback.apply(this, arguments));
+		id = window.requestAnimationFrame(() => callback.apply(this, [...arguments]));
 	};
 }
 
@@ -39,4 +39,22 @@ export function binarySearch(arr, value, key) {
 		}
 	}
 	return _index;
+}
+
+export function cacBuffer(type, index, count, cacBuffer, dataLen) {
+	if (typeof cacBuffer !== 'number') {
+		return console.warn(`请检查输入的缓冲区数据类型是否正确`);
+	}
+
+	const sBufferHandler = () => {
+		const idx = index - Math.ceil(count * cacBuffer);
+		return idx > 0 ? idx : 0;
+	};
+
+	const eBufferHandler = () => {
+		const idx = index + Math.ceil(count * cacBuffer);
+		return idx < dataLen ? idx : dataLen;
+	};
+
+	return type === 's' ? sBufferHandler() : eBufferHandler();
 }
