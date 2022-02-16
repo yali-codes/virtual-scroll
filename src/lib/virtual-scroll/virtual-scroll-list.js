@@ -40,10 +40,6 @@ export default function VirtualScroll(el, dataSource, genItemCallback, options =
 	this.createVContainer();
 	// 首次渲染虚拟列表
 	this.render();
-	// 注册滚动事件
-	this.bindVScrollbarEvent();
-	// 注册窗口改变事件
-	this.bindResizeEvent();
 }
 
 VirtualScroll.prototype.setTotalHeight = function (totalHeight) {
@@ -84,6 +80,9 @@ VirtualScroll.prototype.createVContainer = function () {
 
 	// 注册滚动事件
 	this.bindVScrollbarEvent();
+
+	// 注册窗口改变事件
+	this.bindResizeEvent();
 };
 
 VirtualScroll.prototype.bindVScrollbarEvent = function () {
@@ -163,6 +162,9 @@ VirtualScroll.prototype.render = function () {
 		if (!this.configs.isDynamicHeight) {
 			itemNode.style.height = this.itemHeight;
 		}
+		const offset = this.configs.isDynamicHeight ? this.itemsPosition[sIndex].top : sIndex * this.configs.itemHeight;
+		console.log(itemNode);
+		itemNode.style.transform = `translate3d(0px, ${offset}px, 0px)`;
 		return itemNode.outerHTML;
 	};
 
@@ -176,7 +178,7 @@ VirtualScroll.prototype.render = function () {
 	}
 
 	// 设置内容的偏移量 visibleItemContainer 的 translate3d
-	this.setVisibleItemContainerTranslate(sIndex);
+	// this.setVisibleItemContainerTranslate(sIndex);
 
 	// 如果配置的是自定义滚动条，那么需要动态计算滑块的位置
 	if (this.configs.isCustomScrollBar) {

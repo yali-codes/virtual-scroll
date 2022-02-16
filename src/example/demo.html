@@ -10,12 +10,16 @@
 </head>
 
 <body>
-	<div class="app"></div>
+	<div id="app">
+		<h1 class="app-title">Hello, Virtual Scroll List !</h1>
+		<div class="virtual-scroll-wrapper"></div>
+	</div>
 	<script src="./faker.min.js"></script>
+	<script src="./helper.js"></script>
 	<script src="./vitrual-scroll.js"></script>
 	<script>
 	const dataSource = [];
-	for (let i = 0; i < 3000; i++) {
+	for (let i = 0; i < 30; i++) {
 		dataSource.push({ index: i, value: faker.lorem.sentences() });
 	}
 
@@ -47,7 +51,7 @@
 	};
 
 	const virtualVm = new VirtualScroll(
-		'.app',
+		'.virtual-scroll-wrapper',
 		dataSource,
 		item => {
 			const div = document.createElement('div');
