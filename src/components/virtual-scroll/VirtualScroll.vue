@@ -65,7 +65,7 @@ export default defineComponent({
 			default: () => 150,
 		},
 	},
-	setup(props, { emit, expose }) {
+	setup(props, { expose }) {
 		const state = reactive({
 			dataLen: 0,
 			renderList: [],
@@ -74,13 +74,13 @@ export default defineComponent({
 
 		watch(
 			() => props.dataSource,
-			val => {
-				if (!val.length) {
+			data => {
+				if (!data.length) {
 					state.renderList = [];
 					return;
 				}
 
-				initBase(val);
+				initBase(data);
 			},
 		);
 
@@ -101,10 +101,10 @@ export default defineComponent({
 		});
 
 		function initBase(dataSource) {
-			const dataLen = state.dataLen;
 			state.dataSource = dataSource; // 缓存虚拟列表数据
-			state.dataLen = dataLen; // 缓存数据的长度
-			setItemsPosition(); // 计算列表中每一个节点的累计高度
+
+			const dataLen = (state.dataLen = dataSource.length); // 缓存数据的长度
+			setItemsPosition(dataLen); // 计算列表中每一个节点的累计高度
 
 			/**获取节点并缓存，设置可见区域的数据记录数，以及总高度 */
 			state.vListContainer = $$('.v-list');
@@ -148,15 +148,15 @@ export default defineComponent({
 
 		function loadMoreData(data, idx) {
 			state.dataSource = data;
-			state.dataLen = data.length;
+			const dataLen = (state.dataLen = data.length);
 
 			// 更新总高
 			if (props.isDynamicHeight) {
 				const currentItem = state.itemsPosition[idx - 1];
-				setItemsPosition(idx, currentItem);
-				setTotalHeight(state.itemsPosition[state.dataLen - 1].bottom);
+				setItemsPosition(dataLen - idx, idx, currentItem);
+				setTotalHeight(state.itemsPosition[dataLen - 1].bottom);
 			} else {
-				setTotalHeight(state.dataLen * props.itemHeight);
+				setTotalHeight(dataLen * props.itemHeight);
 			}
 
 			/**如果增加数据是从最末尾开始，不需要刷新列表，即不执行 renderVirtualList 方法 */
@@ -208,24 +208,22 @@ export default defineComponent({
 			});
 		}
 
-		function setItemsPosition(sIndex = 0, currItem) {
+		function setItemsPosition(dataLen, sIndex = 0, currItem) {
 			if (!props.isDynamicHeight) return;
-			const tempItemsPosition = [];
-			const itemHeight = props.itemHeight;
-
 			let index = 0;
 			let top = 0;
 			let bottom = 0;
 			let cachedPosition = [];
-			let dataLen = state.dataLen;
 
 			if (sIndex && currItem) {
 				const { top: currTop, bottom: currBottom } = currItem;
 				top = currTop;
 				bottom = currBottom;
-				dataLen = state.dataLen - sIndex;
 				cachedPosition = state.itemsPosition.slice(0, sIndex);
 			}
+
+			const tempItemsPosition = [];
+			const itemHeight = props.itemHeight;
 
 			while (index < dataLen) {
 				tempItemsPosition.push({

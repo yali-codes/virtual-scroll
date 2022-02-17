@@ -29,7 +29,7 @@ function VirtualScroll(el, dataSource, genItemCallback, options = {}) {
 	};
 
 	Object.assign(this.configs, { ...options }); // 合并参数
-	this.setItemsPosition(); // 计算列表中每一个节点的累计高度
+	this.setItemsPosition(this.dataLen); // 计算列表中每一个节点的累计高度
 	this.createVContainer(); // 创建虚拟列表节点
 	this.renderVirtualList(); // 首次渲染虚拟列表
 }
@@ -105,15 +105,16 @@ VirtualScroll.prototype.bindEvents = function () {
 
 VirtualScroll.prototype.loadMoreData = function (data, idx) {
 	this.dataSource = data;
-	this.dataLen = data.length;
+
+	const dataLen = (this.dataLen = data.length);
 
 	/**更新总高 */
 	if (this.configs.isDynamicHeight) {
 		const currentItem = this.itemsPosition[idx - 1];
-		this.setItemsPosition(idx, currentItem);
-		this.setTotalHeight(this.itemsPosition[this.dataLen - 1].bottom);
+		this.setItemsPosition(dataLen - idx, idx, currentItem);
+		this.setTotalHeight(this.itemsPosition[dataLen - 1].bottom);
 	} else {
-		this.setTotalHeight(this.dataLen * this.configs.itemHeight);
+		this.setTotalHeight(dataLen * this.configs.itemHeight);
 	}
 
 	/**渲染, 如果增加数据是从最末尾开始，不需要刷新 */
@@ -133,24 +134,22 @@ VirtualScroll.prototype.loadMoreData = function (data, idx) {
 	}
 };
 
-VirtualScroll.prototype.setItemsPosition = function (sIndex = 0, currItem) {
+VirtualScroll.prototype.setItemsPosition = function (dataLen, sIndex = 0, currItem) {
 	if (!this.configs.isDynamicHeight) return;
-	const itemsPosition = [];
-	const itemHeight = this.configs.itemHeight;
-
 	let index = 0;
 	let top = 0;
 	let bottom = 0;
 	let cachedPosition = [];
-	let dataLen = this.dataLen;
 
 	if (sIndex && currItem) {
 		const { top: currTop, bottom: currBottom } = currItem;
 		top = currTop;
 		bottom = currBottom;
-		dataLen = this.dataLen - sIndex;
 		cachedPosition = this.itemsPosition.slice(0, sIndex);
 	}
+
+	const itemsPosition = [];
+	const itemHeight = this.configs.itemHeight;
 
 	while (index < dataLen) {
 		itemsPosition.push({
