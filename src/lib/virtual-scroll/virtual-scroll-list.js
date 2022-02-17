@@ -130,8 +130,10 @@ VirtualScroll.prototype.loadMoreData = function (data, idx) {
 		this.setTotalHeight(this.dataLen * this.configs.itemHeight);
 	}
 
-	// 渲染
-	this.render();
+	// 渲染, 如果增加数据是从最末尾开始，不需要刷新
+	if (idx < this.renderList.length) {
+		this.render();
+	}
 
 	// 重新计算自定义滚动条滑块的位置
 	const scrollbarContainer = this.scrollbarContainer;

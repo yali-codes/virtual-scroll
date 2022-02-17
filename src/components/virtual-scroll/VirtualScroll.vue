@@ -20,7 +20,8 @@
 
 <script>
 import '@/lib/faker.min.js';
-import { defineComponent, reactive, toRefs, watch } from 'vue';
+import CustomScrollbar from '@/lib/custom-scrollbar/custom-scrollbar';
+import { defineComponent, nextTick, reactive, toRefs, watch } from 'vue';
 import { throttle, throttleByFrame, binarySearch, cacBuffer } from './helper';
 
 export default defineComponent({
@@ -49,7 +50,7 @@ export default defineComponent({
 		},
 		isCustomScrollBar: {
 			type: Boolean,
-			default: () => false,
+			default: () => true,
 		},
 		thumbBorderRadius: {
 			type: Number,
@@ -130,7 +131,7 @@ export default defineComponent({
 
 				// 更新自定义滚动条的位置
 				if (props.isCustomScrollBar && state.scrollbarContainer) {
-					scrollbarContainer.updateVScrollbarThumElembTop(state.offset, state.totalHeightContainer.clientHeight);
+					state.scrollbarContainer.updateVScrollbarThumElembTop(state.offset, state.totalHeightContainer.clientHeight);
 				}
 
 				// 渲染列表数据
@@ -171,8 +172,10 @@ export default defineComponent({
 				setTotalHeight(state.dataLen * props.itemHeight);
 			}
 
-			// 渲染
-			render();
+			// 渲染, 如果增加数据是从最末尾开始，不需要刷新
+			if (idx < state.renderList.length) {
+				render();
+			}
 
 			// 重新计算自定义滚动条滑块的位置
 			const scrollbarContainer = state.scrollbarContainer;
@@ -198,23 +201,25 @@ export default defineComponent({
 			// 截取可渲染的数据列表
 			state.renderList = state.dataSource.slice(sIndex, eIndex);
 
-			// 如果是动态高度，需要重新计并更新 itemsPosition 的位置信息，以及 totalHeightContainer 高度
-			if (props.isDynamicHeight) {
-				updateItemsPotion(state.visibleItemContainer.children, sIndex);
-				updateTotalHeight();
-			}
-
-			// 设置内容的偏移量 visibleItemContainer 的 translate3d
-			setVisibleItemContainerTranslate(sIndex);
-
-			// 如果配置的是自定义滚动条，那么需要动态计算滑块的位置
-			if (props.isCustomScrollBar) {
-				if (!state.scrollbarContainer) {
-					const { thumbBorderRadius, thumbWidth, thumbHeight } = props;
-					scrollbarContainer = new CustomScrollbar(state.vContainer, { thumbBorderRadius, thumbWidth, thumbHeight });
+			nextTick(() => {
+				// 如果是动态高度，需要重新计并更新 itemsPosition 的位置信息，以及 totalHeightContainer 高度
+				if (props.isDynamicHeight) {
+					updateItemsPotion(state.visibleItemContainer.children, sIndex);
+					updateTotalHeight();
 				}
-				scrollbarContainer.updateVScrollbarThumElemHeight(state.totalHeightContainer.clientHeight);
-			}
+
+				// 设置内容的偏移量 visibleItemContainer 的 translate3d
+				setVisibleItemContainerTranslate(sIndex);
+
+				// 如果配置的是自定义滚动条，那么需要动态计算滑块的位置
+				if (props.isCustomScrollBar) {
+					if (!state.scrollbarContainer) {
+						const { thumbBorderRadius, thumbWidth, thumbHeight } = props;
+						state.scrollbarContainer = new CustomScrollbar(state.vContainer, { thumbBorderRadius, thumbWidth, thumbHeight });
+					}
+					state.scrollbarContainer.updateVScrollbarThumElemHeight(state.totalHeightContainer.clientHeight);
+				}
+			});
 		}
 
 		function setItemsPosition(sIndex = 0, currItem) {
