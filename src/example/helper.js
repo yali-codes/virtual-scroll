@@ -1,3 +1,7 @@
+function $$(selector) {
+	return document.querySelector(selector);
+}
+
 function throttle(callback, delay = 0) {
 	let id = null;
 	return function () {

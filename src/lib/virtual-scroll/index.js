@@ -1,9 +1,9 @@
 import '@/lib/faker.min.js';
-import VirtualScroll from '@/lib/virtual-scroll/virtual-scroll-list';
+import VirtualScroll from '@/lib/virtual-scroll/virtual-scroll';
 
 setTimeout(() => {
 	const dataSource = [];
-	for (let i = 0; i < 30; i++) {
+	for (let i = 0; i < 10; i++) {
 		dataSource.push({ index: i, value: faker.lorem.sentences() });
 	}
 

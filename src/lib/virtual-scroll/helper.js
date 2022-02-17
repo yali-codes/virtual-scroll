@@ -1,3 +1,7 @@
+export function $$(selector) {
+	return document.querySelector(selector);
+}
+
 export function throttle(callback, delay = 0) {
 	let id = null;
 	return function () {

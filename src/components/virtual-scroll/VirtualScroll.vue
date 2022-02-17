@@ -1,8 +1,8 @@
 <template>
 	<div class="v-container" style="position: relative; height: 100%; width: 100%; overflow: hidden">
-		<div class="v-list" style="position: relative; height: 100%; width: 100%; overflow: auto">
-			<div class="v-total-height" style="position: absolute; left: 0; right: 0; top: 0; z-index: -1; height: 1px"></div>
-			<div class="v-visible-items" style="position: absolute; left: 0; right: 0; top: 0; z-index: 1; transform: translate3d(0px, 0px, 0px)">
+		<div class="v-list" style="position: relative; height: 100%; width: 100%; overflow: auto" @scroll="onScrollHandler">
+			<div class="v-total-height" :style="totalHeightStyle"></div>
+			<div class="v-visible-items" :style="visibleStyle">
 				<div class="v-list-item" v-for="item in renderList">
 					<div class="v-list-item-l">
 						<p>
@@ -11,7 +11,7 @@
 						<p>{{ item.value }}</p>
 					</div>
 					<!--这里将是一个作用域插槽-->
-					<button class="v-list-item-r" @click="loadMoreDataHandler(item.index)">加载数据</button>
+					<button class="v-list-item-r" @click="$emit('load', item.index)">加载数据</button>
 				</div>
 			</div>
 		</div>
@@ -21,8 +21,8 @@
 <script>
 import '@/lib/faker.min.js';
 import CustomScrollbar from '@/lib/custom-scrollbar';
-import { defineComponent, nextTick, reactive, toRefs, watch } from 'vue';
-import { throttle, throttleByFrame, binarySearch, cacBuffer } from './helper';
+import { computed, defineComponent, nextTick, reactive, toRefs, watch } from 'vue';
+import { throttle, throttleByFrame, binarySearch, cacBuffer, $$ } from './helper';
 
 export default defineComponent({
 	name: 'VirtualScrollList',
@@ -69,6 +69,7 @@ export default defineComponent({
 		const state = reactive({
 			dataLen: 0,
 			renderList: [],
+			translateY: 0,
 		});
 
 		watch(
@@ -79,84 +80,70 @@ export default defineComponent({
 					return;
 				}
 
-				// 缓存数据
-				state.dataSource = val;
-				state.dataLen = val.length;
-
-				// 计算列表中每一个节点的累计高度
-				setItemsPosition();
-
-				initBase();
-
-				// 首次渲染虚拟列表
-				render();
+				initBase(val);
 			},
 		);
 
-		function initBase() {
-			// 获取节点并缓存，后续操作需要用到
-			state.vContainer = document.querySelector('.v-container');
-			state.vListContainer = document.querySelector('.v-list');
-			state.totalHeightContainer = document.querySelector('.v-total-height');
-			state.visibleItemContainer = document.querySelector('.v-visible-items');
+		const visibleStyle = computed(() => {
+			return `
+				position: absolute; left: 0; right: 0; top: 0; z-index: 1;
+				transform: translate3d(0px, ${state.translateY}px, 0px);
+			`;
+		});
 
-			// 将总高度更新到 totalHeightContainer 节点上
+		const totalHeightStyle = computed(() => {
 			const dataLen = state.dataLen;
+			const totalHeight = dataLen ? state.itemsPosition[dataLen - 1].bottom : 1;
+			return `
+				position: absolute; left: 0; right: 0; top: 0; z-index: -1;
+				height: ${totalHeight}px;
+			`;
+		});
+
+		function initBase(dataSource) {
+			const dataLen = state.dataLen;
+			state.dataSource = dataSource; // 缓存虚拟列表数据
+			state.dataLen = dataLen; // 缓存数据的长度
+			setItemsPosition(); // 计算列表中每一个节点的累计高度
+
+			/**获取节点并缓存，设置可见区域的数据记录数，以及总高度 */
+			state.vListContainer = $$('.v-list');
 			setTotalHeight(props.isDynamicHeight ? state.itemsPosition[dataLen - 1].bottom : props.itemHeight * dataLen);
 
-			// 注册滚动事件
-			bindVScrollbarEvent();
+			/**首次装载数据 */
+			renderVirtualList();
 
-			// 注册窗口改变事件
-			bindResizeEvent();
+			/**监听窗口改变事件 */
+			window.addEventListener('resize', () => {
+				setClientAmounts();
+				renderVirtualList();
+			});
 		}
 
 		function setTotalHeight(totalHeight) {
-			// 更新可显示的总记录数
-			setClientAmounts();
-			// 将总高度更新到 totalHeightContainer 节点上
-			state.totalHeightContainer.style.height = `${totalHeight}px`;
+			setClientAmounts(); // 更新可显示的总记录数
+			state.totalHeight = totalHeight; // 计算总高度
 		}
 
 		function setClientAmounts() {
-			// 设置容器的可见虚拟节点数
+			/**设置容器的可见虚拟节点数 */
 			state.clientAmounts = Math.ceil(state.vListContainer.clientHeight / props.itemHeight);
 		}
 
-		function bindVScrollbarEvent() {
-			// scroll事件的回调函数
-			const updateOffsetHandler = e => {
+		function onScrollHandler(evt) {
+			/**scroll事件的回调函数 */
+			const updateOffset = e => {
 				e.preventDefault();
 				state.offset = e.target.scrollTop;
-
-				// 更新自定义滚动条的位置
+				/**更新自定义滚动条的位置 */
 				if (props.isCustomScrollBar && state.scrollbarContainer) {
-					state.scrollbarContainer.updateVScrollbarThumElembTop(state.offset, state.totalHeightContainer.clientHeight);
+					state.scrollbarContainer.updateThumbTop(state.offset, state.totalHeight);
 				}
-
-				// 渲染列表数据
-				render();
+				renderVirtualList(); // 装载数据
 			};
 
-			// 绑定滚动事件，用节流函数包装 scroll 事件的回调函数
-			const scrollHandler = props.useFrameOptimize ? throttleByFrame(updateOffsetHandler) : throttle(updateOffsetHandler);
-			state.vListContainer.addEventListener('scroll', scrollHandler);
-		}
-
-		function bindResizeEvent() {
-			// 具体事件处理
-			const handleResizing = () => {
-				setClientAmounts();
-				render();
-			};
-
-			// 事件处理器
-			const resizeHandler = props.useFrameOptimize ? throttleByFrame(handleResizing) : throttle(handleResizing);
-			window.addEventListener('resize', resizeHandler);
-		}
-
-		function loadMoreDataHandler(idx) {
-			emit('load', idx);
+			// 滚动事件节流处理
+			props.useFrameOptimize ? throttleByFrame(updateOffset)(evt) : throttle(updateOffset)(evt);
 		}
 
 		function loadMoreData(data, idx) {
@@ -172,56 +159,51 @@ export default defineComponent({
 				setTotalHeight(state.dataLen * props.itemHeight);
 			}
 
-			// return;
-			// 渲染, 如果增加数据是从最末尾开始，不需要刷新
+			/**如果增加数据是从最末尾开始，不需要刷新列表，即不执行 renderVirtualList 方法 */
 			if (idx < state.renderList.length) {
-				return render();
+				return renderVirtualList();
 			}
 
-			// 重新计算自定义滚动条滑块的位置
-			// nextTick(() => {
+			/**重新计算自定义滚动条滑块的位置 */
 			const scrollbarContainer = state.scrollbarContainer;
 			if (props.isCustomScrollBar && scrollbarContainer) {
-				const totalHeight = state.totalHeightContainer.clientHeight;
-				scrollbarContainer.updateVScrollbarThumElemHeight(totalHeight);
-				scrollbarContainer.updateVScrollbarThumElembTop(state.offset, totalHeight);
+				const totalHeight = state.totalHeight;
+				scrollbarContainer.updateThumbHeight(totalHeight);
+				scrollbarContainer.updateThumbTop(state.offset, totalHeight);
 			}
-			// });
 		}
 
-		function render() {
-			// 开始渲染虚拟列表
+		function renderVirtualList() {
+			/**开始渲染虚拟列表 */
 			let sIndex = findFirstIndex(state.offset || 0);
 			let eIndex = Math.min(findEndIndex(sIndex), state.dataLen);
 
-			// 检测是否有需要保留缓存区域
+			/**检测是否有需要保留缓存区域 */
 			const bufferScale = props.bufferScale;
 			if (props.bufferScale) {
 				sIndex = cacBuffer('s', sIndex, state.clientAmounts, bufferScale);
 				eIndex = cacBuffer('e', eIndex, state.clientAmounts, bufferScale, state.dataLen);
 			}
 
-			// 截取可渲染的数据列表
-			state.renderList = state.dataSource.slice(sIndex, eIndex);
+			state.renderList = state.dataSource.slice(sIndex, eIndex); // 截取可渲染的数据列表
 
+			/**Dom更新是异步更新，因此后面的计算需要等待dom更新后再执行 */
 			nextTick(() => {
-				// 如果是动态高度，需要重新计并更新 itemsPosition 的位置信息，以及 totalHeightContainer 高度
 				if (props.isDynamicHeight) {
-					updateItemsPotion(state.visibleItemContainer.children, sIndex);
-					updateTotalHeight();
+					updateItemsPotion(sIndex); // 更新位置信息
+					updateTotalHeight(); // 立即先计算一次总高度
 				}
 
-				// 设置内容的偏移量 visibleItemContainer 的 translate3d
-				setVisibleItemContainerTranslate(sIndex);
+				setVisibleTranslate(sIndex); // 设置内容的偏移量 visibleItemContainer 的 translate3d
 
-				// 如果配置的是自定义滚动条，那么需要动态计算滑块的位置
+				/**如果配置的是自定义滚动条，那么需要动态计算滑块的位置 */
 				if (props.isCustomScrollBar) {
 					if (!state.scrollbarContainer) {
 						const { thumbBorderRadius, thumbWidth, thumbHeight } = props;
-						state.scrollbarContainer = new CustomScrollbar(state.vContainer, { thumbBorderRadius, thumbWidth, thumbHeight });
+						state.scrollbarContainer = new CustomScrollbar('.v-container', { thumbBorderRadius, thumbWidth, thumbHeight });
 					}
-					state.scrollbarContainer.updateVScrollbarThumElemHeight(state.totalHeightContainer.clientHeight);
-					state.scrollbarContainer.updateVScrollbarThumElembTop(state.offset, state.totalHeightContainer.clientHeight);
+					state.scrollbarContainer.updateThumbHeight(state.totalHeight);
+					state.scrollbarContainer.updateThumbTop(state.offset, state.totalHeight);
 				}
 			});
 		}
@@ -258,44 +240,44 @@ export default defineComponent({
 			state.itemsPosition = [...cachedPosition, ...tempItemsPosition];
 		}
 
-		function updateItemsPotion(children, sIndex) {
-			// 遍历 children，获取每一个 child 的 rect -> child.getBoundingClientRect()
-			if (!children.length) return;
-			[...children].forEach(chidNode => {
-				const rect = chidNode.getBoundingClientRect();
-				const dataLen = state.dataLen;
-				const itemsPosition = state.itemsPosition;
+		function updateItemsPotion(sIndex) {
+			const children = $$('.v-visible-items').children;
+			if (children.length) {
+				[...children].forEach(chidNode => {
+					const rect = chidNode.getBoundingClientRect();
+					const dataLen = state.dataLen;
+					const itemsPosition = state.itemsPosition;
 
-				const { height } = rect;
-				const { height: oldHeight, bottom: oldBottom } = itemsPosition[sIndex] || {};
-				const _diffVal = oldHeight - height;
-				if (_diffVal) {
-					itemsPosition[sIndex].height = height;
-					itemsPosition[sIndex].bottom = Math.ceil(oldBottom - _diffVal);
+					const { height } = rect;
+					const { height: oldHeight, bottom: oldBottom } = itemsPosition[sIndex] || {};
+					const _diffVal = oldHeight - height;
+					if (_diffVal) {
+						itemsPosition[sIndex].height = height;
+						itemsPosition[sIndex].bottom = Math.ceil(oldBottom - _diffVal);
 
-					// 并一次更新后续的节点
-					for (let i = sIndex + 1; i < dataLen; i++) {
-						itemsPosition[i].top = itemsPosition[i - 1].bottom;
-						itemsPosition[i].bottom = Math.ceil(itemsPosition[i].bottom - _diffVal);
+						/**并一次更新后续的节点 */
+						for (let i = sIndex + 1; i < dataLen; i++) {
+							itemsPosition[i].top = itemsPosition[i - 1].bottom;
+							itemsPosition[i].bottom = Math.ceil(itemsPosition[i].bottom - _diffVal);
+						}
 					}
-				}
-				sIndex++;
-			});
+					sIndex++;
+				});
+			}
 		}
 
 		function updateTotalHeight() {
 			const dataLen = state.dataLen;
-			state.totalHeightContainer.style.height = `${state.itemsPosition[dataLen - 1].bottom}px`;
+			state.totalHeight = state.itemsPosition[dataLen - 1].bottom;
 		}
 
-		function setVisibleItemContainerTranslate(sIndex) {
-			// 根据是否处于动态高度模式来返回偏移结果
-			const offset = props.isDynamicHeight ? state.itemsPosition[sIndex].top : sIndex * props.itemHeight;
-			state.visibleItemContainer.style.transform = `translate3d(0px, ${offset}px, 0px)`;
+		function setVisibleTranslate(sIndex) {
+			/**根据是否处于动态高度模式来返回偏移结果 */
+			state.translateY = props.isDynamicHeight ? state.itemsPosition[sIndex].top : sIndex * props.itemHeight;
 		}
 
 		function findFirstIndex(offset) {
-			// 二分法查找 bottom
+			/**二分法查找 bottom */
 			return props.isDynamicHeight ? binarySearch(state.itemsPosition, offset, 'bottom') : Math.floor(offset / props.itemHeight);
 		}
 
@@ -306,8 +288,9 @@ export default defineComponent({
 		expose({ loadMoreData });
 
 		return {
-			loadMoreData,
-			loadMoreDataHandler,
+			onScrollHandler,
+			totalHeightStyle,
+			visibleStyle,
 			...toRefs(state),
 		};
 	},

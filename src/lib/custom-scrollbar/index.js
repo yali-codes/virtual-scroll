@@ -1,8 +1,13 @@
-export default function CustomScrollbar(parentNode, configs) {
+export default function CustomScrollbar(parent, configs) {
 	this.thumbBorderRadius = 6;
 	this.thumbWidth = 6;
 	this.thumbHeight = 150;
-	this.vContainer = parentNode;
+
+	// 处理需要挂载的父节点
+	this.vContainer = parent;
+	if (typeof parent === 'string') {
+		this.vContainer = document.querySelector(parent);
+	}
 
 	// 参数合并到实例中
 	Object.assign(this, { ...configs });
@@ -44,11 +49,11 @@ CustomScrollbar.prototype.createScrollbarContainer = function () {
 		this.vContainer.appendChild(scrollbarContainer);
 
 		// 绑定事件
-		this.bindCustomScrollbarEvents();
+		this.bindEvents();
 	}
 };
 
-CustomScrollbar.prototype.updateVScrollbarThumElemHeight = function (totalHeight) {
+CustomScrollbar.prototype.updateThumbHeight = function (totalHeight) {
 	if (!this.scrollbarContainer) {
 		this.createScrollbarContainer();
 	}
@@ -64,14 +69,14 @@ CustomScrollbar.prototype.updateVScrollbarThumElemHeight = function (totalHeight
 	}
 };
 
-CustomScrollbar.prototype.updateVScrollbarThumElembTop = function (offset, totalHeight) {
+CustomScrollbar.prototype.updateThumbTop = function (offset, totalHeight) {
 	if (!this.scrollbarContainer) return;
 	const visibleHeight = this.scrollbarContainer.clientHeight;
 	const moveMaximumHeight = this.scrollbarContainer.clientHeight - this.scrollbarThumbContainer.clientHeight;
 	this.scrollbarThumbContainer.style.top = `${Math.ceil((offset * moveMaximumHeight) / (totalHeight - visibleHeight))}px`;
 };
 
-CustomScrollbar.prototype.bindCustomScrollbarEvents = function () {
+CustomScrollbar.prototype.bindEvents = function () {
 	// 如果有自定义滚动条，那么给自定义滚动条绑定拖拽事件
 	let moveY = null;
 	let vListContainer = null;
