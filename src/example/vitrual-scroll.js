@@ -359,7 +359,7 @@ VirtualScroll.prototype.setVisibleItemContainerTranslate = function (sIndex) {
 VirtualScroll.prototype.updateVScrollbarThumElemHeight = function (totalHeight) {
 	if (!this.scrollbarContainer) return;
 	const visibleHeight = this.scrollbarContainer.clientHeight;
-	const thumbHeight = totalHeight > visibleHeight ? Math.ceil((visibleHeight * visibleHeight) / totalHeight) : null;
+	const thumbHeight = totalHeight > visibleHeight ? Math.floor((visibleHeight * visibleHeight) / totalHeight) : null;
 	if (!thumbHeight) {
 		this.scrollbarContainer.parentNode.removeChild(this.scrollbarContainer);
 		this.scrollbarContainer = null;

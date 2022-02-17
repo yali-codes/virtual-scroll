@@ -21,7 +21,7 @@ CustomScrollbar.prototype.createScrollbarContainer = function () {
 	scrollbarContainer.classList.add('v-scrollbar');
 	scrollbarContainer.style.cssText = `
 		position: absolute;
-		top: 0; bottom: 0; right: 0;
+		top: 0; bottom: 0; right: 14px;
 		width: ${this.thumbWidth}px;
 	`;
 
@@ -54,7 +54,7 @@ CustomScrollbar.prototype.updateVScrollbarThumElemHeight = function (totalHeight
 	}
 
 	const visibleHeight = this.scrollbarContainer.clientHeight;
-	const thumbHeight = totalHeight > visibleHeight ? Math.ceil((visibleHeight * visibleHeight) / totalHeight) : null;
+	const thumbHeight = totalHeight > visibleHeight ? Math.floor((visibleHeight * visibleHeight) / totalHeight) : null;
 	if (!thumbHeight) {
 		this.scrollbarContainer.parentNode.removeChild(this.scrollbarContainer);
 		this.scrollbarContainer = null;
