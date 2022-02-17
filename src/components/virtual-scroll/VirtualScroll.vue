@@ -201,7 +201,7 @@ export default defineComponent({
 			// 如果是动态高度，需要重新计并更新 itemsPosition 的位置信息，以及 totalHeightContainer 高度
 			if (props.isDynamicHeight) {
 				updateItemsPotion(state.visibleItemContainer.children, sIndex);
-				updatetotalHeightContainerHeight();
+				updateTotalHeight();
 			}
 
 			// 设置内容的偏移量 visibleItemContainer 的 translate3d
@@ -274,7 +274,7 @@ export default defineComponent({
 			});
 		}
 
-		function updatetotalHeightContainerHeight() {
+		function updateTotalHeight() {
 			const dataLen = state.dataLen;
 			state.totalHeightContainer.style.height = `${state.itemsPosition[dataLen - 1].bottom}px`;
 		}

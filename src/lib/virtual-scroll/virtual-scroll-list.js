@@ -174,7 +174,7 @@ VirtualScroll.prototype.render = function () {
 	// 如果是动态高度，需要重新计并更新 itemsPosition 的位置信息，以及 totalHeightContainer 高度
 	if (this.configs.isDynamicHeight) {
 		this.updateItemsPotion(this.visibleItemContainer.children, sIndex);
-		this.updatetotalHeightContainerHeight();
+		this.updateTotalHeight();
 	}
 
 	// 设置内容的偏移量 visibleItemContainer 的 translate3d
@@ -247,7 +247,7 @@ VirtualScroll.prototype.updateItemsPotion = function (children, sIndex) {
 	});
 };
 
-VirtualScroll.prototype.updatetotalHeightContainerHeight = function () {
+VirtualScroll.prototype.updateTotalHeight = function () {
 	const dataLen = this.dataLen;
 	this.totalHeightContainer.style.height = `${this.itemsPosition[dataLen - 1].bottom}px`;
 };
