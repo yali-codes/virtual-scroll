@@ -20,7 +20,7 @@
 
 <script>
 import '@/lib/faker.min.js';
-import CustomScrollbar from '@/lib/custom-scrollbar/custom-scrollbar';
+import CustomScrollbar from '@/lib/custom-scrollbar';
 import { defineComponent, nextTick, reactive, toRefs, watch } from 'vue';
 import { throttle, throttleByFrame, binarySearch, cacBuffer } from './helper';
 
@@ -172,18 +172,21 @@ export default defineComponent({
 				setTotalHeight(state.dataLen * props.itemHeight);
 			}
 
+			// return;
 			// 渲染, 如果增加数据是从最末尾开始，不需要刷新
 			if (idx < state.renderList.length) {
-				render();
+				return render();
 			}
 
 			// 重新计算自定义滚动条滑块的位置
+			// nextTick(() => {
 			const scrollbarContainer = state.scrollbarContainer;
 			if (props.isCustomScrollBar && scrollbarContainer) {
 				const totalHeight = state.totalHeightContainer.clientHeight;
 				scrollbarContainer.updateVScrollbarThumElemHeight(totalHeight);
 				scrollbarContainer.updateVScrollbarThumElembTop(state.offset, totalHeight);
 			}
+			// });
 		}
 
 		function render() {
@@ -218,6 +221,7 @@ export default defineComponent({
 						state.scrollbarContainer = new CustomScrollbar(state.vContainer, { thumbBorderRadius, thumbWidth, thumbHeight });
 					}
 					state.scrollbarContainer.updateVScrollbarThumElemHeight(state.totalHeightContainer.clientHeight);
+					state.scrollbarContainer.updateVScrollbarThumElembTop(state.offset, state.totalHeightContainer.clientHeight);
 				}
 			});
 		}
@@ -286,8 +290,8 @@ export default defineComponent({
 
 		function setVisibleItemContainerTranslate(sIndex) {
 			// 根据是否处于动态高度模式来返回偏移结果
-			const offset = (state.offset = props.isDynamicHeight ? state.itemsPosition[sIndex].top : sIndex * props.itemHeight);
-			state.visibleItemContainer.style.transform = `translate3d(0px, ${state.offset}px, 0px)`;
+			const offset = props.isDynamicHeight ? state.itemsPosition[sIndex].top : sIndex * props.itemHeight;
+			state.visibleItemContainer.style.transform = `translate3d(0px, ${offset}px, 0px)`;
 		}
 
 		function findFirstIndex(offset) {

@@ -1,4 +1,4 @@
-import CustomScrollbar from '../custom-scrollbar/custom-scrollbar';
+import CustomScrollbar from '../custom-scrollbar';
 import { throttle, throttleByFrame, binarySearch, cacBuffer } from './helper';
 
 /**
@@ -189,6 +189,7 @@ VirtualScroll.prototype.render = function () {
 			this.scrollbarContainer = new CustomScrollbar(this.vContainer, { thumbBorderRadius, thumbWidth, thumbHeight });
 		}
 		this.scrollbarContainer.updateVScrollbarThumElemHeight(this.totalHeightContainer.clientHeight);
+		this.scrollbarContainer.updateVScrollbarThumElembTop(this.offset, this.totalHeightContainer.clientHeight);
 	}
 };
 
