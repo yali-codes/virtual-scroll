@@ -55,7 +55,7 @@ CustomScrollbar.prototype.updateVScrollbarThumElemHeight = function (totalHeight
 
 	const visibleHeight = this.scrollbarContainer.clientHeight;
 	const thumbHeight = totalHeight > visibleHeight ? Math.floor((visibleHeight * visibleHeight) / totalHeight) : null;
-	if (!thumbHeight) {
+	if (thumbHeight === null) {
 		this.scrollbarContainer.parentNode.removeChild(this.scrollbarContainer);
 		this.scrollbarContainer = null;
 	} else {

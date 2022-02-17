@@ -132,7 +132,7 @@ VirtualScroll.prototype.loadMoreData = function (data, idx) {
 
 	// 渲染, 如果增加数据是从最末尾开始，不需要刷新
 	if (idx < this.renderList.length) {
-		this.render();
+		return this.render();
 	}
 
 	// 重新计算自定义滚动条滑块的位置

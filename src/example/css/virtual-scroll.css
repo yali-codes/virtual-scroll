@@ -22,8 +22,8 @@
 }
 
 .v-list.is-custom-scrollbar::-webkit-scrollbar {
-	width: 0;
-	height: 0;
+	/* width: 0;
+	height: 0; */
 }
 
 .v-list-item {

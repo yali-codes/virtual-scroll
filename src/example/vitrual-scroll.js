@@ -99,7 +99,7 @@ VirtualScroll.prototype.createScrollbarContainer = function (scrollthumbBarWidth
 	scrollbarContainer.classList.add('v-scrollbar');
 	scrollbarContainer.style.cssText = `
 		position: absolute;
-		top: 0; bottom: 0; right: 0;
+		top: 0; bottom: 0; right: 14px;
 		width: ${scrollthumbBarWidth}px;
 	`;
 
@@ -224,7 +224,7 @@ VirtualScroll.prototype.loadMoreData = function (data, idx) {
 
 	// 渲染, 如果增加数据是从最末尾开始，不需要刷新
 	if (idx < this.renderList.length) {
-		this.render();
+		return this.render();
 	}
 
 	// 重新计算自定义滚动条滑块的位置
@@ -276,6 +276,7 @@ VirtualScroll.prototype.render = function () {
 		const { borderRadius, scrollthumbBarWidth } = this.configs;
 		this.createScrollbarContainer(scrollthumbBarWidth, borderRadius);
 		this.updateVScrollbarThumElemHeight(this.totalHeightContainer.clientHeight);
+		this.updateVScrollbarThumElembTop(this.totalHeightContainer.clientHeight);
 	}
 };
 
@@ -362,7 +363,7 @@ VirtualScroll.prototype.updateVScrollbarThumElemHeight = function (totalHeight) 
 	if (!this.scrollbarContainer) return;
 	const visibleHeight = this.scrollbarContainer.clientHeight;
 	const thumbHeight = totalHeight > visibleHeight ? Math.floor((visibleHeight * visibleHeight) / totalHeight) : null;
-	if (!thumbHeight) {
+	if (thumbHeight === null) {
 		this.scrollbarContainer.parentNode.removeChild(this.scrollbarContainer);
 		this.scrollbarContainer = null;
 	} else {
