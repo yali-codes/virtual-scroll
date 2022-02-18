@@ -1,8 +1,9 @@
 <template>
 	<div class="v-container" style="position: relative; height: 100%; width: 100%; overflow: hidden">
 		<div class="v-list" style="position: relative; height: 100%; width: 100%; overflow: auto" @scroll="onScrollHandler">
-			<div class="v-total-height" :style="totalHeightStyle"></div>
+			<div :style="totalHeightStyle"></div>
 			<div class="v-visible-items" :style="visibleStyle">
+				<!--这里将是一个作用域插槽-->
 				<div class="v-list-item" v-for="item in renderList">
 					<div class="v-list-item-l">
 						<p>
@@ -10,7 +11,6 @@
 						</p>
 						<p>{{ item.value }}</p>
 					</div>
-					<!--这里将是一个作用域插槽-->
 					<button class="v-list-item-r" @click="$emit('load', item.index)">加载数据</button>
 				</div>
 			</div>
@@ -93,7 +93,7 @@ export default defineComponent({
 
 		const totalHeightStyle = computed(() => {
 			const dataLen = state.dataLen;
-			const totalHeight = dataLen ? state.itemsPosition[dataLen - 1].bottom : 1;
+			const totalHeight = dataLen ? (props.isDynamicHeight ? state.itemsPosition[dataLen - 1].bottom : dataLen * props.itemHeight) : 1;
 			return `
 				position: absolute; left: 0; right: 0; top: 0; z-index: -1;
 				height: ${totalHeight}px;
